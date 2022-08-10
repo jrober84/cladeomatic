@@ -12,6 +12,7 @@ from cladeomatic.utils.seqdata import create_pseudoseqs_from_vcf, parse_referenc
     create_aln_pos_from_unalign_pos_lookup, calc_homopolymers
 from cladeomatic.utils.jellyfish import run_jellyfish_count, parse_jellyfish_counts
 from cladeomatic.utils.kmerSearch import SeqSearchController
+from cladeomatic.utils import parse_metadata
 from cladeomatic.constants import SCHEME_HEADER
 from statistics import mean
 import pandas as pd
@@ -477,24 +478,7 @@ def calc_node_associations(metadata, clade_data, ete_tree_obj):
     return clade_data
 
 
-def parse_metadata(file):
-    '''
-    Parses metadata file into a dict with samples as the keys
-    :param file: str path to metdata file with 'sample_id' as a colum
-    :return: dict
-    '''
-    df = pd.read_csv(file, sep="\t", header=0)
-    if not 'sample_id' in df.columns.tolist():
-        return {}
-    columns = set(df.columns.tolist()) - set('sample_id')
-    metadata = {}
-    for index, row in df.iterrows():
-        metadata[row['sample_id']] = {}
-        for field in columns:
-            if field == 'sample_id':
-                continue
-            metadata[row['sample_id']][field] = row[field]
-    return metadata
+
 
 
 def sample_dist_summary(distances, num_bins=25):
@@ -613,6 +597,7 @@ def as_range(values):
     ranges = []
     i = 0
     while i < num_val - 1:
+
         s = i
         for k in range(i + 1, num_val):
             if values[k] - values[i] != 1:
@@ -626,7 +611,6 @@ def as_range(values):
                 ranges.append((s, k))
             else:
                 ranges.append((s, k - 1))
-
     return ranges
 
 
@@ -882,7 +866,38 @@ def select_kmers(kmer_groups, clade_info, klen, min_kmers=1, max_kmers=100):
     '''
     selected_kmers = {}
     variant_positions = set()
+    conserved_positions = set()
+    for pos in kmer_groups:
+        num_kmers = kmer_groups[pos]['num_kmers']
+        if num_kmers == 1:
+            conserved_positions.add(pos)
+    conserved_positions = sorted(list(conserved_positions))
+    conserved_range_indexes = as_range(conserved_positions)
+    conserved_ranges = []
+    for i in range(0, len(conserved_range_indexes)):
+        s = conserved_range_indexes[i][0]
+        e = conserved_range_indexes[i][1]
+        conserved_ranges.append((conserved_positions[s], conserved_positions[e]))
+
+    positions = clade_info['0']['pos']
+    for i in range(0,len(conserved_ranges)):
+        pos = conserved_ranges[i][0]
+        positions.append(pos)
+        clade_info['0']['chr'].append('1')
+        kIndex = list(kmer_groups[pos]['kmers'].keys())[0]
+        kseq = kmer_groups[pos]['kmers'][kIndex]
+        base = kseq[0]
+        clade_info['0']['bases'].append(base)
+        selected_kmers[pos] = {
+            'out_group': {},
+            'in_group': {base: [kIndex]},
+        }
+
+    clade_info['0']['pos'] = positions
+
     for clade_id in clade_info:
+        if clade_id == '0':
+            continue
         positions = clade_info[clade_id]['pos']
         variant_positions = set(positions) | variant_positions
         bases = clade_info[clade_id]['bases']
@@ -920,76 +935,11 @@ def select_kmers(kmer_groups, clade_info, klen, min_kmers=1, max_kmers=100):
                     'in_group': in_group,
                 }
 
-    variant_positions = list(variant_positions)
-    variant_range_indexes = as_range(variant_positions)
-    variant_ranges = []
-    for i in range(0, len(variant_range_indexes)):
-        s = variant_range_indexes[i][0]
-        e = variant_range_indexes[i][1]
-        variant_ranges.append((variant_positions[s], variant_positions[e]))
 
-    min_var_pos = variant_positions[0]
-    max_var_pos = variant_positions[-1]
-    kmer_group_ids = sorted([int(x) for x in list(kmer_groups.keys())])
-    min_kmer_pos = kmer_group_ids[0]
-    max_kmer_pos = kmer_group_ids[-1]
-    conserved_ranges = []
-    conserved_positions = []
-    if min_var_pos - min_kmer_pos >= klen:
-        conserved_ranges.append((min_kmer_pos, min_var_pos - 1))
-    for i in range(0, len(variant_ranges) - 1):
-        length = variant_ranges[i + 1][0] - variant_ranges[i][1]
-        if length >= klen:
-            conserved_ranges.append((variant_ranges[i][1] + 1, variant_ranges[i + 1][0] - 1))
-        s = variant_ranges[i][1] + 1
-        e = variant_ranges[i + 1][0] - 1
-        for k in range(s, e):
-            conserved_positions.append(k)
-
-    if (max_kmer_pos + klen) - max_var_pos >= klen:
-        conserved_ranges.append((max_var_pos + 1, max_kmer_pos))
-
-    for i in range(0, len(conserved_ranges)):
-        s = conserved_ranges[i][0]
-        e = conserved_ranges[i][1]
-        positions = range(s, e)
-        for group_id in positions:
-            if len(kmer_groups[group_id]) == 1:
-                kIndex = list(kmer_groups[group_id].keys())[0]
-                kseq = kmer_groups[group_id]['kmers'][kIndex]
-                bpos = 0
-                base = kseq[bpos]
-                selected_kmers[group_id] = {
-                    'out_group': {},
-                    'in_group': {base: [kIndex]},
-                }
     group_map = {}
     for group_id in kmer_groups:
         for kIndex in kmer_groups[group_id]['kmers']:
             group_map[kIndex] = group_id
-    if len(conserved_ranges) == 0:
-        for idx, pos in enumerate(conserved_positions):
-
-            group_ids = range(pos - klen + 1, pos + klen - 1)
-            for group_id in group_ids:
-                if group_id not in kmer_groups:
-                    continue
-                states = {}
-                for kIndex in kmer_groups[group_id]['kmers']:
-                    kseq = kmer_groups[group_id]['kmers'][kIndex]
-                    bpos = pos - group_id
-                    base = kseq[bpos]
-                    if base == '-' or base == 'N':
-                        continue
-                    if not base in states:
-                        states[base] = []
-                    states[base].append(kIndex)
-                if len(states) > 1:
-                    continue
-                selected_kmers[pos] = {
-                    'out_group': {},
-                    'in_group': states,
-                }
 
     selected_kmers = minimize_kmers(selected_kmers, kmer_groups, clade_info, klen, min_kmers, max_kmers)
 
@@ -1005,6 +955,7 @@ def select_kmers(kmer_groups, clade_info, klen, min_kmers=1, max_kmers=100):
                     s = kmer_groups[group_id]['aStart']
                     e = kmer_groups[group_id]['aEnd']
                     kmers[pos][base][kIndex] = {'kseq': kmer_groups[group_id]['kmers'][kIndex], 'aStart': s, 'aEnd': e}
+
     return kmers
 
 
@@ -1017,9 +968,9 @@ def minimize_kmers(selected_kmers, kmer_groups, clade_info, klen, min_kmers=1, m
         num_out_group = len(selected_kmers[pos]['out_group'])
         if num_in_group >= 1 and num_out_group == 0:
             base = list(selected_kmers[pos]['in_group'])[0]
-            clade_info['0']['chr'].append('')
-            clade_info['0']['pos'].append(pos)
-            clade_info['0']['bases'].append(base)
+            #clade_info['0']['chr'].append('')
+            #clade_info['0']['pos'].append(pos)
+            #clade_info['0']['bases'].append(base)
         for base in selected_kmers[pos]['out_group']:
             for kIndex in selected_kmers[pos]['out_group'][base]:
                 if not kIndex in kmer_pos:
@@ -1601,6 +1552,7 @@ def run():
     kmer_groups = kmer_worker(outdir, ref_seq, variant_file, klen, min_member_count, num_samples, prefix, num_threads)
 
     selected_kmers = select_kmers(kmer_groups, clade_data, klen)
+
 
     valid_postions = set(selected_kmers.keys())
     # Preserve the root

@@ -256,7 +256,9 @@ def annotate_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,ci
         if n > num_fields:
             num_fields = n
         fields = leaf_meta[id]
+
         for i in range(0,len(fields)):
+            fields[i] = str(fields[i])
             l = len(fields[i])
             if not i in field_lens:
                 field_lens[i] = 0
