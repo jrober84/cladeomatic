@@ -24,7 +24,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-exec(open('parsityper/version.py').read())
+exec(open('cladeomatic/version.py').read())
 
 setup(
     name='parsityper',
@@ -39,10 +39,10 @@ setup(
     author='James Robertson',
     author_email='james.robertson@phac-aspc.gc.ca',
     description=(
-        'Calde-O-Matic: Automatic recognition of population structures based on canonical SNPs'),
+        'Clade-O-Matic: Automatic recognition of population structures based on canonical SNPs'),
     keywords='Genotyping, population structure, kmer',
     classifiers=classifiers,
-    package_dir={'parsityper': 'parsityper'},
+    package_dir={'cladeomatic': 'cladeomatic'},
     package_data={
         "": ["*.txt", "*.fasta","*.html","*.gb"],
     },
