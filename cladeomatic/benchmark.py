@@ -213,6 +213,3 @@ def run():
 
     logging.info("Analysis complete")
 
-
-if __name__ == '__main__':
-    run()

@@ -1,16 +1,46 @@
-# This is a sample Python script.
+#!/usr/bin/env python3
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+import sys
+from cladeomatic.version import __version__
 
 
-# Press the green button in the gutter to run the script.
+tasks = {
+    'create': 'Identify population structure and develop typing scheme',
+    'benchmark': 'Test developed scheme using labeled samples and scheme',
+    'test': 'Test cladeomatic functionality on a small dataset',
+    'version': 'Print version and exit',
+}
+
+ordered_tasks = [
+    'create',
+    'benchmark',
+]
+
+
+def print_usage_and_exit():
+    print('Usage: cladeomatic <command> [options] <required arguments>', file=sys.stderr)
+    print('\nTo get minimal usage for a command use:\ncladeomatic command', file=sys.stderr)
+    print('\nTo get full help for a command use one of:\ncladeomatic command -h\nparsitype command --help\n', file=sys.stderr)
+    print('\nAvailable commands:\n', file=sys.stderr)
+    max_task_length = max([len(x) for x in list(tasks.keys())]) + 1
+    for task in ordered_tasks:
+        print('{{0: <{}}}'.format(max_task_length).format(task), tasks[task], sep=' ', file=sys.stderr)
+    sys.exit(0)
+
+def main():
+
+    if len(sys.argv) == 1 or sys.argv[1] in ['-h', '-help', '--help']:
+        print_usage_and_exit()
+
+    task = sys.argv.pop(1)
+
+    if task not in tasks:
+        print('Task "' + task + '" not recognised. Cannot continue.\n', file=sys.stderr)
+        print_usage_and_exit()
+
+    exec('import parsityper.' + task)
+    exec('parsityper.' + task + '.run()')
+
+# call main function
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()
