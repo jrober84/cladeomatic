@@ -57,7 +57,12 @@ setup(
         'argparse',
         'statistics',
         'plotly',
-        'ete3'
+        'ete3',
+        'jellyfish',
+        'DendroPy',
+        'pyahocorasick',
+        'PyQt5',
+        'ray'
 
     ],
 
