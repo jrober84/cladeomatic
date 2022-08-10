@@ -20,7 +20,7 @@ ordered_tasks = [
 def print_usage_and_exit():
     print('Usage: cladeomatic <command> [options] <required arguments>', file=sys.stderr)
     print('\nTo get minimal usage for a command use:\ncladeomatic command', file=sys.stderr)
-    print('\nTo get full help for a command use one of:\ncladeomatic command -h\nparsitype command --help\n', file=sys.stderr)
+    print('\nTo get full help for a command use one of:\ncladeomatic command -h\ncladeomatic command --help\n', file=sys.stderr)
     print('\nAvailable commands:\n', file=sys.stderr)
     max_task_length = max([len(x) for x in list(tasks.keys())]) + 1
     for task in ordered_tasks:
