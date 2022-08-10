@@ -38,8 +38,8 @@ def main():
         print('Task "' + task + '" not recognised. Cannot continue.\n', file=sys.stderr)
         print_usage_and_exit()
 
-    exec('import parsityper.' + task)
-    exec('parsityper.' + task + '.run()')
+    exec('import cladeomatic.' + task)
+    exec('cladeomatic.' + task + '.run()')
 
 # call main function
 if __name__ == '__main__':

@@ -27,7 +27,7 @@ def read(fname):
 exec(open('cladeomatic/version.py').read())
 
 setup(
-    name='parsityper',
+    name='cladeomatic',
     include_package_data=True,
     version='0.0.1',
     python_requires='>=3.8.0,<4',
