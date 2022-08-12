@@ -1,6 +1,6 @@
 import json
 import shutil
-import sys, os, time
+import sys, os, time, math
 import logging
 from cladeomatic.version import __version__
 from cladeomatic.utils.phylo_tree import parse_tree, prune_tree, tree_to_distance_matrix, \
@@ -458,9 +458,21 @@ def calc_node_associations(metadata, clade_data, ete_tree_obj):
                     features[field_id][value] += 1
 
         for field_id in metadata_labels:
-            clade_data[clade_id]['ari'][field_id] = calc_ARI(genotype_assignments, metadata_labels[field_id])
-            clade_data[clade_id]['ami'][field_id] = calc_AMI(genotype_assignments, metadata_labels[field_id])
-            clade_data[clade_id]['entropies'][field_id] = calc_shanon_entropy(features[field_id].values())
+            category_1 = []
+            category_2 = []
+            for idx, value in enumerate(metadata_labels[field_id]):
+                if isinstance(value,float):
+                    if math.isnan(value):
+                        continue
+                if len(value) == 0:
+                    continue
+                category_1.append(genotype_assignments[idx])
+                category_2.append(value)
+
+
+            clade_data[clade_id]['ari'][field_id] = calc_ARI(category_1, category_2)
+            clade_data[clade_id]['ami'][field_id] = calc_AMI(category_1, category_2)
+            clade_data[clade_id]['entropies'][field_id] = calc_shanon_entropy(category_2.values())
             clade_data[clade_id]['fisher'][field_id] = {}
             for value in ftest[field_id]:
                 ftest[field_id][value]['neg-neg'] = (
