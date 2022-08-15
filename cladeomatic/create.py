@@ -468,11 +468,12 @@ def calc_node_associations(metadata, clade_data, ete_tree_obj):
                     continue
                 category_1.append(genotype_assignments[idx])
                 category_2.append(metadata_counts[field_id][idx])
-                
+
             clade_data[clade_id]['ari'][field_id] = calc_ARI(category_1, category_2)
             clade_data[clade_id]['ami'][field_id] = calc_AMI(category_1, category_2)
             clade_data[clade_id]['entropies'][field_id] = calc_shanon_entropy(category_2)
             clade_data[clade_id]['fisher'][field_id] = {}
+            
             for value in ftest[field_id]:
                 ftest[field_id][value]['neg-neg'] = (
                             ftest[field_id][value]['pos-pos'] | ftest[field_id][value]['neg-pos'])
