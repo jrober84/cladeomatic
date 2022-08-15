@@ -467,7 +467,7 @@ def calc_node_associations(metadata, clade_data, ete_tree_obj):
                 if len(value) == 0:
                     continue
                 category_1.append(genotype_assignments[idx])
-                category_2.append(value)
+                category_2.append(metadata_counts[field_id][idx])
 
 
             clade_data[clade_id]['ari'][field_id] = calc_ARI(category_1, category_2)
