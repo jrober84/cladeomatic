@@ -472,7 +472,7 @@ def calc_node_associations(metadata, clade_data, ete_tree_obj):
 
             clade_data[clade_id]['ari'][field_id] = calc_ARI(category_1, category_2)
             clade_data[clade_id]['ami'][field_id] = calc_AMI(category_1, category_2)
-            clade_data[clade_id]['entropies'][field_id] = calc_shanon_entropy(category_2.values())
+            clade_data[clade_id]['entropies'][field_id] = calc_shanon_entropy(category_2)
             clade_data[clade_id]['fisher'][field_id] = {}
             for value in ftest[field_id]:
                 ftest[field_id][value]['neg-neg'] = (
