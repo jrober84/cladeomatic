@@ -61,7 +61,9 @@ def parse_metadata(file):
     for index, row in df.iterrows():
         metadata[row['sample_id']] = {}
         for field in columns:
+            field = str(field)
             if field == 'sample_id':
                 continue
-            metadata[row['sample_id']][field] = row[field]
+            value = str(row[field])
+            metadata[row['sample_id']][field] = value
     return metadata

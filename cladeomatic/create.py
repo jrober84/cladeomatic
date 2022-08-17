@@ -342,37 +342,6 @@ def get_valid_nodes(snp_data, min_snp_count):
     return filtered
 
 
-def calc_node_distances_bck(clade_data, ete_tree_obj):
-    '''
-    Accepts a dict of clade_data and for each node calculates the distance of all leaves to the node
-    :param clade_data: dict clade data structure of tree nodes
-    :param ete_tree_obj: ETE3 tree obj
-    :return: dict filtered clade data structure
-    '''
-    for clade_id in clade_data:
-        node = ete_tree_obj.search_nodes(name=clade_id)[0]
-        in_members = list(node.get_leaf_names())
-        num_members = len(in_members)
-        distances = []
-        for i in range(0, num_members):
-            l1 = ete_tree_obj.search_nodes(name=in_members[i])[0]
-            for k in range(i + 1, num_members):
-                dist = l1.get_distance(in_members[k])
-            distances.append(dist)
-
-        min_dist = 0
-        max_dist = 0
-        ave_dist = 0
-        if len(distances) > 0:
-            min_dist = min(distances)
-            max_dist = max(distances)
-            ave_dist = mean(distances)
-        clade_data[clade_id]['min_dist'] = min_dist
-        clade_data[clade_id]['max_dist'] = max_dist
-        clade_data[clade_id]['ave_dist'] = ave_dist
-    return clade_data
-
-
 def calc_node_distances(clade_data, ete_tree_obj):
     '''
     Accepts a dict of clade_data and for each node calculates the distance of all leaves to the node
@@ -464,16 +433,17 @@ def calc_node_associations(metadata, clade_data, ete_tree_obj):
                 if isinstance(value,float):
                     if math.isnan(value):
                         continue
-                if len(value) == 0:
+                value = str(value)
+                if len(value) == 0 or value == 'nan':
                     continue
                 category_1.append(genotype_assignments[idx])
-                category_2.append(metadata_counts[field_id][idx])
+                category_2.append(metadata_counts[field_id][value])
 
             clade_data[clade_id]['ari'][field_id] = calc_ARI(category_1, category_2)
             clade_data[clade_id]['ami'][field_id] = calc_AMI(category_1, category_2)
             clade_data[clade_id]['entropies'][field_id] = calc_shanon_entropy(category_2)
             clade_data[clade_id]['fisher'][field_id] = {}
-            
+
             for value in ftest[field_id]:
                 ftest[field_id][value]['neg-neg'] = (
                             ftest[field_id][value]['pos-pos'] | ftest[field_id][value]['neg-pos'])
@@ -567,9 +537,13 @@ def temporal_signal(metadata, clade_data, ete_tree_obj, rcor_thresh):
         distances = []
         years = []
         for sample_id in in_members:
+            value = metadata[sample_id]['year']
+            if value == 'nan' or len(value) == 0:
+                continue
             dist = node.get_distance(sample_id)
             distances.append(dist)
-            years.append(int(metadata[sample_id]['year']))
+
+            years.append(int(float(metadata[sample_id]['year'])))
 
         R = 0
         P = 1
