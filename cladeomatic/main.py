@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys
-from cladeomatic.version import __version__
-os.environ['QT_QPA_PLATFORM']='offscreen'
+import sys
 
 tasks = {
     'create': 'Identify population structure and develop typing scheme',

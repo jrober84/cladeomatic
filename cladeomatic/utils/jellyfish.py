@@ -1,6 +1,9 @@
-import os.path
 import pandas as pd
 from cladeomatic.utils import run_command
+import pandas as pd
+
+from cladeomatic.utils import run_command
+
 
 def run_jellyfish_count(seq_file,out_file,mem='10M',k=21,n_threads=1,jf_out=False):
     if jf_out:

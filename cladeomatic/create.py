@@ -1,28 +1,33 @@
-import json
 import shutil
-import sys, os, time, math
 import logging
-from cladeomatic.version import __version__
-from cladeomatic.utils.phylo_tree import parse_tree, prune_tree, tree_to_distance_matrix, \
-    get_pairwise_distances_from_matrix, annotate_tree, plot_single_rep_tree
-from cladeomatic.utils.vcfhelper import vcfReader
-from cladeomatic.utils import init_console_logger, calc_ARI, calc_AMI, calc_shanon_entropy, fisher_exact
-from cladeomatic.utils.visualization import plot_bar
-from cladeomatic.utils.seqdata import create_pseudoseqs_from_vcf, parse_reference_gbk, \
-    create_aln_pos_from_unalign_pos_lookup, calc_homopolymers
-from cladeomatic.utils.jellyfish import run_jellyfish_count, parse_jellyfish_counts
-from cladeomatic.utils.kmerSearch import SeqSearchController
-from cladeomatic.utils import parse_metadata
-from cladeomatic.constants import SCHEME_HEADER
-from statistics import mean
-import pandas as pd
-import numpy as np
-from scipy.signal import find_peaks
-from scipy.stats import spearmanr, pearsonr
+import math
+import os
+import psutil
+import shutil
+import sys
 from argparse import (ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter)
+from statistics import mean
+
+import numpy as np
+import pandas as pd
+import ray
 from Bio import SeqIO
 from Bio.Seq import Seq
+from scipy.signal import find_peaks
+from scipy.stats import spearmanr, pearsonr
 
+from cladeomatic.constants import SCHEME_HEADER
+from cladeomatic.utils import init_console_logger, calc_ARI, calc_AMI, calc_shanon_entropy, fisher_exact
+from cladeomatic.utils import parse_metadata
+from cladeomatic.utils.jellyfish import run_jellyfish_count, parse_jellyfish_counts
+from cladeomatic.utils.kmerSearch import SeqSearchController
+from cladeomatic.utils.phylo_tree import parse_tree, prune_tree, tree_to_distance_matrix, \
+    get_pairwise_distances_from_matrix, annotate_tree, plot_single_rep_tree
+from cladeomatic.utils.seqdata import create_pseudoseqs_from_vcf, parse_reference_gbk, \
+    create_aln_pos_from_unalign_pos_lookup, calc_homopolymers
+from cladeomatic.utils.vcfhelper import vcfReader
+from cladeomatic.utils.visualization import plot_bar
+from cladeomatic.version import __version__
 
 
 def parse_args():
@@ -378,7 +383,6 @@ def calc_node_distances(clade_data, ete_tree_obj):
 
 def calc_node_associations(metadata, clade_data, ete_tree_obj):
     '''
-
     :param metadata:
     :param clade_data:
     :param ete_tree_obj:
@@ -482,7 +486,6 @@ def sample_dist_summary(distances, num_bins=25):
 
 def find_dist_peaks(values):
     '''
-
     :param values: list
     :return:
     '''
@@ -491,7 +494,6 @@ def find_dist_peaks(values):
 
 def find_dist_troughs(values):
     '''
-
     :param values: list
     :return:
     '''
@@ -500,15 +502,12 @@ def find_dist_troughs(values):
 
 def node_list_attr(clade_data, attribute):
     '''
-
     Parameters
     ----------
     clade_data
     attribute
-
     Returns
     -------
-
     '''
     values = []
     for clade_id in clade_data:
@@ -521,17 +520,14 @@ def node_list_attr(clade_data, attribute):
 
 def temporal_signal(metadata, clade_data, ete_tree_obj, rcor_thresh):
     '''
-
     Parameters
     ----------
     metadata
     clade_data
     ete_tree_obj
     rcor_thresh
-
     Returns
     -------
-
     '''
     for clade_id in clade_data:
         node = ete_tree_obj.search_nodes(name=clade_id)[0]
@@ -567,14 +563,11 @@ def temporal_signal(metadata, clade_data, ete_tree_obj, rcor_thresh):
 
 def as_range(values):
     '''
-
     Parameters
     ----------
     values list of integers
-
     Returns list of tuples with the start and end index of each range
     -------
-
     '''
     values = sorted(values)
     num_val = len(values)
@@ -604,14 +597,11 @@ def as_range(values):
 
 def get_nomenclature_ranges(counts):
     '''
-
     Parameters
     ----------
     counts: list of frequencies
-
     Returns list of tuples of compressed ranges
     -------
-
     '''
     (troughs, _) = find_dist_troughs(counts)
     troughs = list(troughs)
@@ -630,16 +620,13 @@ def get_nomenclature_ranges(counts):
 
 def select_nodes(clade_data, dist_ranges, min_count=1):
     '''
-
     Parameters
     ----------
     clade_data
     dist_ranges
     min_count
-
     Returns
     -------
-
     '''
     num_ranks = len(dist_ranges)
     candidate_nodes = []
@@ -662,15 +649,12 @@ def select_nodes(clade_data, dist_ranges, min_count=1):
 
 def select_bifucating_nodes(ete_tree_obj, clade_data):
     '''
-
     Parameters
     ----------
     ete_tree_obj
     clade_data
-
     Returns
     -------
-
     '''
     bifurcating_nodes = []
     for clade_id in clade_data:
@@ -690,15 +674,12 @@ def select_bifucating_nodes(ete_tree_obj, clade_data):
 
 def create_compressed_hierarchy(ete_tree_obj, selected_nodes):
     '''
-
     Parameters
     ----------
     ete_tree_obj
     selected_nodes
-
     Returns
     -------
-
     '''
     selected_nodes.reverse()
     sample_genotypes = generate_genotypes(ete_tree_obj)
@@ -743,14 +724,11 @@ def create_compressed_hierarchy(ete_tree_obj, selected_nodes):
 
 def validate_file(file):
     '''
-
     Parameters
     ----------
     file
-
     Returns
     -------
-
     '''
     if os.path.isfile(file) and os.path.getsize(file) > 9:
         return True
@@ -760,14 +738,11 @@ def validate_file(file):
 
 def isint(str):
     '''
-
     Parameters
     ----------
     str
-
     Returns
     -------
-
     '''
     try:
         int(str)
@@ -778,16 +753,13 @@ def isint(str):
 
 def add_kmer_positions(kmer_mapping_info, klen, pseudo_seq_file):
     '''
-
     Parameters
     ----------
     kmer_mapping_info
     klen
     pseudo_seq_file
-
     Returns
     -------
-
     '''
     seqs_to_check = {}
 
@@ -817,14 +789,11 @@ def add_kmer_positions(kmer_mapping_info, klen, pseudo_seq_file):
 
 def group_kmers_by_pos(kmer_mapping_info):
     '''
-
     Parameters
     ----------
     kmer_mapping_info
-
     Returns
     -------
-
     '''
     groups = {}
     id = 0
@@ -839,7 +808,6 @@ def group_kmers_by_pos(kmer_mapping_info):
 
 def select_kmers(kmer_groups, clade_info, klen, min_kmers=1, max_kmers=100):
     '''
-
     Parameters
     ----------
     kmer_groups
@@ -847,10 +815,8 @@ def select_kmers(kmer_groups, clade_info, klen, min_kmers=1, max_kmers=100):
     klen
     min_kmers
     max_kmers
-
     Returns
     -------
-
     '''
     selected_kmers = {}
     variant_positions = set()
@@ -1006,7 +972,6 @@ def minimize_kmers(selected_kmers, kmer_groups, clade_info, klen, min_kmers=1, m
 
 def kmer_worker(outdir, ref_seq, vcf_file, kLen, min_kmer_count, max_kmer_count,prefix, n_threads):
     '''
-
     Parameters
     ----------
     outdir
@@ -1016,10 +981,8 @@ def kmer_worker(outdir, ref_seq, vcf_file, kLen, min_kmer_count, max_kmer_count,
     min_kmer_count
     max_kmer_count
     n_threads
-
     Returns
     -------
-
     '''
     logging.info("Creating pseudo-sequences for kmer selection")
     pseudo_seq_file = os.path.join(outdir, "pseudo.seqs.fasta")
@@ -1050,7 +1013,6 @@ def kmer_worker(outdir, ref_seq, vcf_file, kLen, min_kmer_count, max_kmer_count,
 def clade_worker(ete_tree_obj, tree_file, vcf_file, metadata_file, min_snp_count, outdir, prefix,max_states=6,
                  min_member_count=1, rcor_thresh=0.4):
     '''
-
     Parameters
     ----------
     ete_tree_obj
@@ -1060,10 +1022,8 @@ def clade_worker(ete_tree_obj, tree_file, vcf_file, metadata_file, min_snp_count
     min_snp_count
     max_states
     outdir
-
     Returns
     -------
-
     '''
     logging.info("Identifying canonical snps")
     snps = identify_canonical_snps(ete_tree_obj, vcf_file, min_member_count)
@@ -1183,7 +1143,6 @@ def clade_worker(ete_tree_obj, tree_file, vcf_file, metadata_file, min_snp_count
 
 def metadata_worker(metadata_file, clade_data, ete_tree_obj, outdir, prefix,rcor_thresh=0.2):
     '''
-
     Parameters
     ----------
     metadata_file
@@ -1191,10 +1150,8 @@ def metadata_worker(metadata_file, clade_data, ete_tree_obj, outdir, prefix,rcor
     ete_tree_obj
     outdir
     rcor_thresh
-
     Returns
     -------
-
     '''
     logging.info("Parsing sample metadata")
     metadata = parse_metadata(metadata_file)
@@ -1230,7 +1187,6 @@ def find_overlaping_gene_feature(start,end,ref_info,ref_name):
 
 def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_features={},trans_table=11):
     '''
-
     Parameters
     ----------
     header
@@ -1238,10 +1194,8 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
     clade_info
     sample_genotypes
     ref_features
-
     Returns
     -------
-
     '''
 
     perf_annotation = True
@@ -1431,7 +1385,10 @@ def run():
     keep_tmp = cmd_args.keep_tmp
 
     logging = init_console_logger(3)
-
+    num_cpus = psutil.cpu_count(logical=False)
+    if num_threads > num_cpus:
+        num_threads = num_cpus
+    ray.init(ignore_reinit_error=True, num_cpus=num_threads)
     if '.gbk' in reference_file or '.gb' in reference_file:
         seq_file_type = 'genbank'
     else:
@@ -1584,4 +1541,3 @@ def run():
         shutil.rmtree(analysis_dir)
 
     logging.info("Analysis complete")
-

@@ -1,11 +1,12 @@
-import os,sys
-os.environ['QT_QPA_PLATFORM']='offscreen'
-
-from ete3 import Tree, NodeStyle, TreeStyle, TextFace,RectFace
-from cladeomatic.constants import COLORS
-import dendropy
 import os
-from random import shuffle
+
+import dendropy
+from ete3 import Tree, NodeStyle, TreeStyle, TextFace, RectFace
+
+from cladeomatic.constants import COLORS
+
+if not 'DISPLAY' in os.environ:
+    os.environ['QT_QPA_PLATFORM']='offscreen'
 
 def tree_to_distance_matrix(tree_file,out_file):
     '''
