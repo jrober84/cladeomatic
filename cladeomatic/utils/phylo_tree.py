@@ -1,4 +1,5 @@
-import sys
+import os,sys
+os.environ['QT_QPA_PLATFORM']='offscreen'
 
 from ete3 import Tree, NodeStyle, TreeStyle, TextFace,RectFace
 from cladeomatic.constants import COLORS

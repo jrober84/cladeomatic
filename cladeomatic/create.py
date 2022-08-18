@@ -23,6 +23,8 @@ from argparse import (ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescript
 from Bio import SeqIO
 from Bio.Seq import Seq
 
+
+
 def parse_args():
     class CustomFormatter(ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter):
         pass
