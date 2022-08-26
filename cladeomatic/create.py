@@ -1402,7 +1402,7 @@ def run():
     num_cpus = psutil.cpu_count(logical=False)
     if num_threads > num_cpus:
         num_threads = num_cpus
-    tmp_dir_name = tempfile.TemporaryDirectory()
+    tmp_dir_name = tempfile.TemporaryDirectory().name
     if not ray.is_initialized():
         ray.init(ignore_reinit_error=True, num_cpus=num_threads, _temp_dir=tmp_dir_name)
     if '.gbk' in reference_file or '.gb' in reference_file:
