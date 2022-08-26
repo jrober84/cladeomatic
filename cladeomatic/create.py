@@ -1,3 +1,4 @@
+import tempfile
 import shutil
 import logging
 import math
@@ -1255,9 +1256,15 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
                     obj = {}
                     for field_id in header:
                         obj[field_id] = ''
+
                     start = selected_kmers[pos][base][kIndex]['aStart']
                     end = selected_kmers[pos][base][kIndex]['aEnd']
-                    gene_feature = find_overlaping_gene_feature(start, end, ref_features, ref_id)
+                    if perf_annotation:
+                        gene_feature = find_overlaping_gene_feature(start, end, ref_features, ref_id)
+                    else:
+                        gene_feature = None
+                        gene_name = 'Intergenic'
+
                     ref_var_aa = ''
                     alt_var_aa = ''
                     is_cds = False
@@ -1320,18 +1327,24 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
                     obj['is_kmer_unique'] = True
                     obj['is_valid'] = True
                     obj['kmer_entropy'] = -1
+
                     obj['gene'] = gene_name
-                    obj['gene_start'] = gene_start+1
-                    obj['gene_end'] = gene_end+1
-                    obj['cds_start'] = codon_var_start+1
-                    obj['cds_end'] = codon_var_end
+                    if gene_feature is not None:
+                        obj['gene_start'] = gene_start+1
+                        obj['gene_end'] = gene_end+1
+                        obj['cds_start'] = codon_var_start+1
+                        obj['cds_end'] = codon_var_end
+                        obj['aa_name'] = aa_name
+                        obj['aa_start'] = aa_var_start + 1
+                        obj['aa_end'] = aa_var_start + 1
+
+
                     obj['is_cds'] = is_cds
                     obj['is_frame_shift'] = False
                     obj['is_silent'] = is_silent
 
-                    obj['aa_name'] = aa_name
-                    obj['aa_start'] = aa_var_start+1
-                    obj['aa_end'] = aa_var_start+1
+
+
 
                     is_found = False
                     for clade_id in clade_info:
@@ -1385,10 +1398,13 @@ def run():
     keep_tmp = cmd_args.keep_tmp
 
     logging = init_console_logger(3)
+    os.environ['RAY_worker_register_timeout_seconds'] = '60'
     num_cpus = psutil.cpu_count(logical=False)
     if num_threads > num_cpus:
         num_threads = num_cpus
-    ray.init(ignore_reinit_error=True, num_cpus=num_threads)
+    tmp_dir_name = tempfile.TemporaryDirectory()
+    if not ray.is_initialized():
+        ray.init(ignore_reinit_error=True, num_cpus=num_threads, _temp_dir=tmp_dir_name)
     if '.gbk' in reference_file or '.gb' in reference_file:
         seq_file_type = 'genbank'
     else:

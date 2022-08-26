@@ -1,10 +1,10 @@
-import sys
-import psutil
-import ray
-from ahocorasick import Automaton
-from itertools import product
 import re
+from itertools import product
+import tempfile
+import ray
 from Bio import SeqIO
+from ahocorasick import Automaton
+
 from cladeomatic.utils.seqdata import create_aln_pos_from_unalign_pos_lookup
 
 bases_dict = {
@@ -116,7 +116,9 @@ def SeqSearchController(seqKmers, fasta_file,out_kmer_file,n_threads=1):
     if num_kmers == 0:
         return {}
     klen = len(seqKmers[0])
-
+    tmp_dir_name = tempfile.TemporaryDirectory()
+    if not ray.is_initialized():
+        ray.init(ignore_reinit_error=True, num_cpus=n_threads,_temp_dir=tmp_dir_name)
     count_seqs = 0
     seq_ids = []
     with open(fasta_file, "r") as handle:
