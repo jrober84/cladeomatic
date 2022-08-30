@@ -98,8 +98,6 @@ def call_genotypes(genotype_rules,metadata,variants,n_threads=1):
         genoytpe_results = {}
         dists = {}
 
-       # print(genotype_rules)
-       # print(variants[sample_id])
         for genotype in genotype_rules:
             valid_pos = 0
             genoytpe_results[genotype] = {'match':{},'mismatch':{}}
@@ -115,13 +113,10 @@ def call_genotypes(genotype_rules,metadata,variants,n_threads=1):
                     genoytpe_results[genotype]['match'][pos] = found_base
                 else:
                     genoytpe_results[genotype]['mismatch'][pos] = found_base
-            #print(genotype)
-           # print(genotype_rules[genotype])
-           # print(genoytpe_results[genotype])
+
             if valid_pos == 0:
                 continue
             dists[genotype] = 1 - len(genoytpe_results[genotype]['match']) / valid_pos
-            #print("{}\t{}\t{}\t{}\t{}".format(sample_id, metadata[sample_id]['genotype'], genotype,dists[genotype],dists[genotype] ))
 
         result[sample_id]['genoytpe_results'] = genoytpe_results
         result[sample_id]['genoytpe_dists'] =  {k: v for k, v in sorted(dists.items(), key=lambda item: item[1])}
@@ -132,6 +127,20 @@ def call_genotypes(genotype_rules,metadata,variants,n_threads=1):
                 result[sample_id]['predicted_genotype(s)'].append(genotype)
                 result[sample_id]['predicted_genotype_dist'] = dist
                 pdist = dist
+        num_geno = len(result[sample_id]['predicted_genotype(s)'])
+        if num_geno > 1:
+            filt = []
+            for i in range(0,num_geno):
+                is_substring = False
+                for k in range(i+1,num_geno):
+                    if "{}.".format(result[sample_id]['predicted_genotype(s)'][i]) in result[sample_id]['predicted_genotype(s)'][k]:
+                        is_substring = True
+                if not is_substring:
+                    filt.append(result[sample_id]['predicted_genotype(s)'][i])
+            result[sample_id]['predicted_genotype(s)'] = filt
+
+
+
     return result
 
 def run():
@@ -166,7 +175,8 @@ def run():
 
     logging.info("Calling genotypes for {} samples".format(len(metadata)))
     genoytpe_results = call_genotypes(genotype_rules, metadata, variants)
-
+    for sample_id in genoytpe_results:
+        print("{}\t{}\t{}".format(sample_id, genoytpe_results[sample_id]['submitted_genotype'], genoytpe_results[sample_id]['predicted_genotype(s)']))
     logging.info("Calcualting F1 for {} samples".format(len(metadata)))
     truth = []
     pred = []

@@ -150,62 +150,6 @@ def write_node_report(clade_data, outfile):
     return
 
 
-def identify_canonical_snps_bck(ete_tree_obj, vcf_file, min_member_count=1):
-    '''
-    Accepts SNP data and tree to identify which SNPs correspond to a specific node on the tree
-    :param ete_tree_obj: ETE3 tree object
-    :param vcf_file: str path to vcf or tsv snp data
-    :return: dict of snp_data data structure
-    '''
-    vcf = vcfReader(vcf_file)
-    data = vcf.process_row()
-    samples = vcf.samples
-
-    snps = {}
-    count_snps = 0
-    if data is not None:
-        count_snps += 1
-    while data is not None:
-        chrom = data['#CHROM']
-        pos = int(data['POS']) - 1
-        if not chrom in snps:
-            snps[chrom] = {}
-        snps[chrom][pos] = {}
-        assignments = {}
-        for sample_id in samples:
-            base = data[sample_id]
-            if not base in assignments:
-                assignments[base] = []
-            assignments[base].append(sample_id)
-
-        for base in assignments:
-            if not base in ['A', 'T', 'C', 'G']:
-                continue
-            in_samples = assignments[base]
-            if len(in_samples) < min_member_count:
-                continue
-            if len(in_samples) == 1:
-                ancestor_node = ete_tree_obj.get_leaves_by_name(in_samples[0])[0].get_ancestors()[0]
-                node_leaves = ancestor_node.get_leaf_names()
-            else:
-                ancestor_node = ete_tree_obj.get_common_ancestor(in_samples)
-                node_leaves = ancestor_node.get_leaf_names()
-            node_leaves_noambig = set(node_leaves)
-            if 'N' in assignments:
-                node_leaves_noambig = set(node_leaves) - set(assignments['N'])
-            is_ref = base == data['REF']
-            clade_id = ancestor_node.name
-            clade_total_members = len(node_leaves)
-            is_canonical = set(node_leaves) == set(in_samples) or set(in_samples) == set(node_leaves_noambig)
-            snps[chrom][pos][base] = {'clade_id': clade_id, 'is_canonical': is_canonical,
-                                      'num_clade_members': clade_total_members, 'num_members': clade_total_members,
-                                      'is_ref': is_ref}
-        count_snps += 1
-        data = vcf.process_row()
-
-    return snps
-
-
 def identify_canonical_snps(ete_tree_obj, vcf_file, min_member_count=1):
     '''
     Accepts SNP data and tree to identify which SNPs correspond to a specific node on the tree
@@ -1404,7 +1348,7 @@ def run():
         num_threads = num_cpus
     tmp_dir_name = tempfile.TemporaryDirectory().name
     if not ray.is_initialized():
-        ray.init(ignore_reinit_error=True, num_cpus=num_threads, _temp_dir=tmp_dir_name)
+        ray.init(ignore_reinit_error=True, num_cpus=num_threads)
     if '.gbk' in reference_file or '.gb' in reference_file:
         seq_file_type = 'genbank'
     else:
