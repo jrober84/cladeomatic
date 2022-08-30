@@ -175,8 +175,15 @@ def run():
 
     logging.info("Calling genotypes for {} samples".format(len(metadata)))
     genoytpe_results = call_genotypes(genotype_rules, metadata, variants)
+
+    fh = open(os.path.join(outdir,"{}-scheme.calls.txt".format(prefix)),'w')
+    fh.write("sample_id\tsubmited_genotype\tpredicted_genotype\tis_match\n")
     for sample_id in genoytpe_results:
-        print("{}\t{}\t{}".format(sample_id, genoytpe_results[sample_id]['submitted_genotype'], genoytpe_results[sample_id]['predicted_genotype(s)']))
+        g = genoytpe_results[sample_id]['submitted_genotype']
+        c = ",".join([str(x) for x in genoytpe_results[sample_id]['predicted_genotype(s)']])
+        m = g == c
+        fh.write("{}\t{}\t{}\t{}\n".format(sample_id, g, c,m))
+
     logging.info("Calcualting F1 for {} samples".format(len(metadata)))
     truth = []
     pred = []
