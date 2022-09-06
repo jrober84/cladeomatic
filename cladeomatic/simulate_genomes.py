@@ -90,9 +90,10 @@ def create_seqs(sim_samples,id,seq,outfile):
 
 
 def main():
-    input_fasta = '/Users/jrobertson/Desktop/2022-06-Simulation/Salmonella_Typhimurium_LT2.fasta'
-    output_fasta = '/Users/jrobertson/Desktop/2022-06-Simulation/simulated.genomes2.fasta'
-    num_generations = 5
+    input_fasta = '/Users/jrobertson/Desktop/2022-09-Simulation/aroC.fas'
+    output_fasta = '/Users/jrobertson/Desktop/2022-09-Simulation/aroC.simulation.fas'
+    num_generations = 10
+
     num_mutations = 1
 
 

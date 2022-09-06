@@ -305,7 +305,7 @@ def annotate_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,ci
         for node in genotype:
             if node in node_colors:
                 continue
-            if k > num_colors:
+            if k >= num_colors:
                 k = 0
                 p += 1
             node_colors[node] = color_list[k]
@@ -381,8 +381,8 @@ def plot_single_rep_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=
                 field_lens[i] = 0
             if l > field_lens[i]:
                 field_lens[i] = l
-    h = num_samples * 10
-    w = h
+    h = num_samples * 100
+    w = int(h / 2)
 
     #Set color pallet
     color_list = []

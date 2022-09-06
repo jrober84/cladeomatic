@@ -80,6 +80,7 @@ def processSeq(fasta_file, seqids, num_kmers, klen, aho):
     revcomp_kmers = set()
     kmer_align_start = [-1] * num_kmers
     kmer_align_end = [-1] * num_kmers
+    seqs_present = {}
     with open(fasta_file, "r") as handle:
         for record in SeqIO.parse(handle, "fasta"):
             id = str(record.id)
@@ -102,12 +103,14 @@ def processSeq(fasta_file, seqids, num_kmers, klen, aho):
             for kIndex, count in enumerate(counts):
                 if count > 1:
                     invalid_kmers.add(kIndex)
+            seqs_present[id] = counts
     handle.close()
     return {
         'invalid_kmers': invalid_kmers,
         'revcomp_kmers': revcomp_kmers,
         'kmer_align_start': kmer_align_start,
-        'kmer_align_end': kmer_align_end
+        'kmer_align_end': kmer_align_end,
+        'seqs_kcounts':seqs_present
     }
 
 
@@ -116,9 +119,6 @@ def SeqSearchController(seqKmers, fasta_file,out_kmer_file,n_threads=1):
     if num_kmers == 0:
         return {}
     klen = len(seqKmers[0])
-    tmp_dir_name = tempfile.TemporaryDirectory()
-    if not ray.is_initialized():
-        ray.init(ignore_reinit_error=True, num_cpus=n_threads,_temp_dir=tmp_dir_name)
     count_seqs = 0
     seq_ids = []
     with open(fasta_file, "r") as handle:
@@ -142,13 +142,16 @@ def SeqSearchController(seqKmers, fasta_file,out_kmer_file,n_threads=1):
     revcomp_kmers = set()
     kmer_align_start = results[0]['kmer_align_start']
     kmer_align_end = results[0]['kmer_align_end']
+    kmer_counts = {}
     for i in range(0,len(results)):
         invalid_kmers = invalid_kmers | results[i]['invalid_kmers']
         revcomp_kmers = revcomp_kmers | results[i]['revcomp_kmers']
+        kmer_counts.update(results[i]['seqs_kcounts'])
+
     filt = {}
     id = 0
     fh = open(out_kmer_file,'w')
-    fh.write("id\taStart\taEnd\tkseq\n")
+    fh.write("id\taStart\taEnd\tkseq\tseqs_present\n")
     for idx in range(0,num_kmers):
         if idx in invalid_kmers:
             continue
@@ -164,11 +167,16 @@ def SeqSearchController(seqKmers, fasta_file,out_kmer_file,n_threads=1):
                 'aStart':s,
                 'aEnd':e,
                 'num_kmers':0,
-                'kmers':{}
+                'kmers':{},
             }
         filt[s]['num_kmers']+=1
         filt[s]['kmers'][id] = kseq
-        fh.write("{}\t{}\t{}\t{}\n".format(id,s,e,kseq))
+        kmer_presence = []
+        for seq_id in kmer_counts:
+            if kmer_counts[seq_id][idx] == 1:
+                kmer_presence.append(seq_id)
+        kmer_presence = sorted(kmer_presence)
+        fh.write("{}\t{}\t{}\t{}\t{}\n".format(id,s,e,kseq,",".join([str(x) for x in kmer_presence])))
         del(seqKmers[idx])
         id+=1
     return filt

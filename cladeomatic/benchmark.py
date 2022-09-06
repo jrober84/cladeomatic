@@ -38,6 +38,7 @@ def get_snp_profiles(valid_positions, vcf_file):
     '''
     vcf = vcfReader(vcf_file)
     data = vcf.process_row()
+
     samples = vcf.samples
     profiles = {}
     count_snps = 0
@@ -64,6 +65,8 @@ def get_snp_profiles(valid_positions, vcf_file):
 def parse_scheme_genotypes(scheme_file):
     scheme = {}
     df = pd.read_csv(scheme_file, sep="\t", header=0, low_memory=False)
+    variant_positions = list(df['variant_start'].unique())
+    geno_seqs = {}
     for row in df.itertuples():
         target_variant = row.target_variant
         variant_start = int(row.variant_start)
@@ -74,13 +77,45 @@ def parse_scheme_genotypes(scheme_file):
             positive_genotypes = positive_genotypes.split(',')
         if len(positive_genotypes) == 0:
             continue
+        genotypes = positive_genotypes
         for genotype in positive_genotypes:
+
             if not genotype in scheme:
-                scheme[genotype] = {}
-            scheme[genotype][variant_start] = target_variant
+                scheme[genotype] = {'positive':{},'partial':{}}
+            scheme[genotype]['positive'][variant_start] = target_variant
+
+        partial_genotypes = row.partial_genotypes
+        if isinstance(partial_genotypes,float):
+            partial_genotypes = []
+        else:
+            partial_genotypes = partial_genotypes.split(',')
+        genotypes+= partial_genotypes
+        if len(partial_genotypes) == 0:
+            continue
+        for genotype in partial_genotypes:
+            if not genotype in scheme:
+                scheme[genotype] = {'positive':{},'partial':{}}
+            scheme[genotype]['partial'][variant_start] = target_variant
+
+        for genotype in genotypes:
+            if not genotype in geno_seqs:
+                geno_seqs[genotype] = {}
+                for pos in variant_positions:
+                    geno_seqs[genotype][pos] = 'N'
+            if geno_seqs[genotype][variant_start] == 'N':
+                geno_seqs[genotype][variant_start] = target_variant
+            else:
+                if geno_seqs[genotype][variant_start] != target_variant:
+                    geno_seqs[genotype][variant_start] = "-"
+    for genotype in geno_seqs:
+        print(">{}\n{}\n".format(genotype,"".join(list(geno_seqs[genotype].values()))))
+
+
+    sys.exit()
+
     return scheme
 
-def call_genotypes(genotype_rules,metadata,variants,n_threads=1):
+def call_genotypes(genotype_rules,metadata,variants,max_dist=0,n_threads=1):
     result = {}
     for sample_id in metadata:
         if not 'genotype' in metadata[sample_id]:
@@ -97,36 +132,41 @@ def call_genotypes(genotype_rules,metadata,variants,n_threads=1):
         }
         genoytpe_results = {}
         dists = {}
-
         for genotype in genotype_rules:
-            valid_pos = 0
             genoytpe_results[genotype] = {'match':{},'mismatch':{}}
-            for pos in genotype_rules[genotype]:
-                target_base = genotype_rules[genotype][pos]
-                if not pos in variants[sample_id]:
-                    continue
-                found_base = variants[sample_id][pos]
-                if found_base == '-':
-                    continue
-                valid_pos+=1
-                if target_base == found_base:
-                    genoytpe_results[genotype]['match'][pos] = found_base
-                else:
-                    genoytpe_results[genotype]['mismatch'][pos] = found_base
+            dists[genotype] = 1
 
-            if valid_pos == 0:
-                continue
-            dists[genotype] = 1 - len(genoytpe_results[genotype]['match']) / valid_pos
+        for pos in variants[sample_id]:
+            found_base = variants[sample_id][pos]
+            for genotype in genotype_rules:
+                if pos in genotype_rules[genotype]['positive']:
+                    target_base = genotype_rules[genotype]['positive'][pos]
+                    if found_base == target_base:
+                        genoytpe_results[genotype]['match'][pos] = found_base
+                    else:
+                        genoytpe_results[genotype]['mismatch'][pos] = found_base
+                elif pos in genotype_rules[genotype]['partial']:
+                    target_base = genotype_rules[genotype]['partial'][pos]
+                    if found_base == target_base:
+                        genoytpe_results[genotype]['match'][pos] = found_base
+
+        for genotype in genoytpe_results:
+            matches = len(genoytpe_results[genotype]['match'])
+            mismatches = len(genoytpe_results[genotype]['mismatch'])
+            total = matches + mismatches
+            if total > 0:
+                dists[genotype] = 1 - matches /total
 
         result[sample_id]['genoytpe_results'] = genoytpe_results
         result[sample_id]['genoytpe_dists'] =  {k: v for k, v in sorted(dists.items(), key=lambda item: item[1])}
         pdist = 1
         for genotype in result[sample_id]['genoytpe_dists']:
             dist =  result[sample_id]['genoytpe_dists'][genotype]
-            if dist <= pdist:
+            if dist <= pdist and dist <= max_dist:
                 result[sample_id]['predicted_genotype(s)'].append(genotype)
                 result[sample_id]['predicted_genotype_dist'] = dist
                 pdist = dist
+
         num_geno = len(result[sample_id]['predicted_genotype(s)'])
         if num_geno > 1:
             filt = []
@@ -164,10 +204,13 @@ def run():
     logging.info("Reading scheme file {}".format(scheme_file))
     genotype_rules = parse_scheme_genotypes(scheme_file)
 
+
     valid_positions = []
     for genotype in genotype_rules:
-        valid_positions += list(genotype_rules[genotype].keys())
+        for state in genotype_rules[genotype]:
+            valid_positions += list(genotype_rules[genotype][state].keys())
     valid_positions = list(set(valid_positions))
+
     logging.info("Extracted {} genotyping positions".format(len(valid_positions)))
 
     logging.info("Reading snp data from vcf file {}".format(variant_file))
@@ -196,10 +239,11 @@ def run():
         if genotype not in group_samples:
             group_samples[genotype] = {'truth': [], 'pred': []}
         pgenotypes = genoytpe_results[sample_id]['predicted_genotype(s)']
+
         if len(pgenotypes) > 1:
             num_ambig+=1
 
-        if genotype == str(pgenotypes[0]):
+        if len(pgenotypes) >= 1 and genotype == str(pgenotypes[0]):
             pred.append(genotype)
             group_samples[genotype]['pred'].append(sample_id)
             num_correct+=1

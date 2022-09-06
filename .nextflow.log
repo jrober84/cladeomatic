@@ -1,0 +1,65 @@
+Aug.-15 11:00:47.276 [main] DEBUG nextflow.cli.Launcher - $> nextflow run hello
+Aug.-15 11:00:47.390 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 22.04.5
+Aug.-15 11:00:47.434 [main] DEBUG nextflow.scm.AssetManager - Listing projects in folder: /Users/jrobertson/.nextflow/assets
+Aug.-15 11:00:47.462 [main] INFO  nextflow.cli.CmdRun - Pulling nextflow-io/hello ...
+Aug.-15 11:00:47.463 [main] DEBUG nextflow.scm.RepositoryProvider - Request [credentials -:-] -> https://api.github.com/repos/nextflow-io/hello/contents/nextflow.config
+Aug.-15 11:00:49.236 [main] DEBUG nextflow.scm.RepositoryProvider - Request [credentials -:-] -> https://api.github.com/repos/nextflow-io/hello/contents/main.nf
+Aug.-15 11:00:49.454 [main] DEBUG nextflow.scm.RepositoryProvider - Request [credentials -:-] -> https://api.github.com/repos/nextflow-io/hello
+Aug.-15 11:00:49.801 [main] DEBUG nextflow.scm.AssetManager - Pulling nextflow-io/hello -- Using remote clone url: https://github.com/nextflow-io/hello.git
+Aug.-15 11:00:53.523 [main] INFO  nextflow.cli.CmdRun -  downloaded from https://github.com/nextflow-io/hello.git
+Aug.-15 11:00:53.603 [main] DEBUG nextflow.config.ConfigBuilder - Found config base: /Users/jrobertson/.nextflow/assets/nextflow-io/hello/nextflow.config
+Aug.-15 11:00:53.606 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /Users/jrobertson/.nextflow/assets/nextflow-io/hello/nextflow.config
+Aug.-15 11:00:53.622 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Aug.-15 11:00:53.686 [main] DEBUG nextflow.cli.CmdRun - Applied DSL=2 from script declararion
+Aug.-15 11:00:53.688 [main] INFO  nextflow.cli.CmdRun - Launching `https://github.com/nextflow-io/hello` [sad_carson] DSL2 - revision: 4eab81bd42 [master]
+Aug.-15 11:00:53.713 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; plugins-dir=/Users/jrobertson/.nextflow/plugins; core-plugins: nf-amazon@1.7.2,nf-azure@0.13.2,nf-console@1.0.3,nf-ga4gh@1.0.3,nf-google@1.1.4,nf-sqldb@0.4.0,nf-tower@1.4.0
+Aug.-15 11:00:53.716 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins default=[]
+Aug.-15 11:00:53.741 [main] INFO  org.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Aug.-15 11:00:53.743 [main] INFO  org.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Aug.-15 11:00:53.755 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.4.1 in 'deployment' mode
+Aug.-15 11:00:53.775 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Aug.-15 11:00:53.892 [main] DEBUG nextflow.Session - Session uuid: aa8b1637-b625-430f-b06f-48658dcf0321
+Aug.-15 11:00:53.892 [main] DEBUG nextflow.Session - Run name: sad_carson
+Aug.-15 11:00:53.892 [main] DEBUG nextflow.Session - Executor pool size: 4
+Aug.-15 11:00:54.189 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 22.04.5 build 5708
+  Created: 15-07-2022 16:09 UTC (12:09 EDT)
+  System: Mac OS X 11.6
+  Runtime: Groovy 3.0.10 on Java HotSpot(TM) 64-Bit Server VM 18.0.2+9-61
+  Encoding: UTF-8 (UTF-8)
+  Process: 6570@Johns-Mac-mini.local [192.168.1.111]
+  CPUs: 4 - Mem: 16 GB (23.8 MB) - Swap: 0 (0)
+Aug.-15 11:00:54.264 [main] DEBUG nextflow.Session - Work-dir: /Users/jrobertson/PycharmProjects/cladeomatic/work [Mac OS X]
+Aug.-15 11:00:54.265 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/jrobertson/.nextflow/assets/nextflow-io/hello/bin
+Aug.-15 11:00:54.281 [main] DEBUG nextflow.executor.ExecutorFactory - Extension executors providers=[]
+Aug.-15 11:00:54.298 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Aug.-15 11:00:54.350 [main] DEBUG nextflow.cache.CacheFactory - Using Nextflow cache factory: nextflow.cache.DefaultCacheFactory
+Aug.-15 11:00:54.368 [main] DEBUG nextflow.util.CustomThreadPool - Creating default thread pool > poolSize: 5; maxThreads: 1000
+Aug.-15 11:00:54.498 [main] DEBUG nextflow.Session - Session start invoked
+Aug.-15 11:00:54.978 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Aug.-15 11:00:55.157 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Aug.-15 11:00:55.157 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Aug.-15 11:00:55.164 [main] DEBUG nextflow.executor.Executor - [warm up] executor > local
+Aug.-15 11:00:55.181 [main] DEBUG n.processor.LocalPollingMonitor - Creating local task monitor for executor 'local' > cpus=4; memory=16 GB; capacity=4; pollInterval=100ms; dumpInterval=5m
+Aug.-15 11:00:55.373 [main] DEBUG nextflow.Session - Workflow process names [dsl2]: sayHello
+Aug.-15 11:00:55.374 [main] DEBUG nextflow.Session - Ignite dataflow network (2)
+Aug.-15 11:00:55.376 [main] DEBUG nextflow.processor.TaskProcessor - Starting process > sayHello
+Aug.-15 11:00:55.378 [main] DEBUG nextflow.script.ScriptRunner - > Await termination 
+Aug.-15 11:00:55.378 [main] DEBUG nextflow.Session - Session await
+Aug.-15 11:00:55.682 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Aug.-15 11:00:55.690 [Task submitter] INFO  nextflow.Session - [bb/df7afd] Submitted process > sayHello (3)
+Aug.-15 11:00:55.702 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Aug.-15 11:00:55.724 [Task submitter] INFO  nextflow.Session - [44/2cd42c] Submitted process > sayHello (4)
+Aug.-15 11:00:55.745 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Aug.-15 11:00:55.747 [Task submitter] INFO  nextflow.Session - [06/decb6f] Submitted process > sayHello (1)
+Aug.-15 11:00:55.771 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Aug.-15 11:00:55.776 [Task submitter] INFO  nextflow.Session - [e9/db222a] Submitted process > sayHello (2)
+Aug.-15 11:00:55.838 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 3; name: sayHello (3); status: COMPLETED; exit: 0; error: -; workDir: /Users/jrobertson/PycharmProjects/cladeomatic/work/bb/df7afd2a32de769b39a7239a1888f5]
+Aug.-15 11:00:55.871 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 4; name: sayHello (4); status: COMPLETED; exit: 0; error: -; workDir: /Users/jrobertson/PycharmProjects/cladeomatic/work/44/2cd42c210d66175b9f59f7788c487b]
+Aug.-15 11:00:55.884 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 1; name: sayHello (1); status: COMPLETED; exit: 0; error: -; workDir: /Users/jrobertson/PycharmProjects/cladeomatic/work/06/decb6fa7b5115d5efd35dc352a042b]
+Aug.-15 11:00:55.892 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 2; name: sayHello (2); status: COMPLETED; exit: 0; error: -; workDir: /Users/jrobertson/PycharmProjects/cladeomatic/work/e9/db222a3f1df1b6c5e55fc8d6a1918d]
+Aug.-15 11:00:55.898 [main] DEBUG nextflow.Session - Session await > all process finished
+Aug.-15 11:00:55.923 [main] DEBUG nextflow.Session - Session await > all barriers passed
+Aug.-15 11:00:55.947 [main] DEBUG nextflow.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=4; failedCount=0; ignoredCount=0; cachedCount=0; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=0; abortedCount=0; succeedDuration=124ms; failedDuration=0ms; cachedDuration=0ms;loadCpus=0; loadMemory=0; peakRunning=1; peakCpus=1; peakMemory=0; ]
+Aug.-15 11:00:56.038 [main] DEBUG nextflow.cache.CacheDB - Closing CacheDB done
+Aug.-15 11:00:56.077 [main] DEBUG nextflow.script.ScriptRunner - > Execution complete -- Goodbye

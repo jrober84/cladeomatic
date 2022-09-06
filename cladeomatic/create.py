@@ -54,6 +54,8 @@ def parse_args():
     parser.add_argument('--min_snp_count', type=int, required=False,
                         help='Minimum number of unique snps for a clade to be valid',
                         default=1)
+    parser.add_argument('--min_perc', type=float, required=False,
+                        help='Minimum percentage of clade members to be positive for a kmer to be valid', default=1)
     parser.add_argument('--max_states', type=int, required=False,
                         help='Maximum number of states for a position [A,T,C,G,N,-]',
                         default=6)
@@ -261,6 +263,7 @@ def get_valid_nodes(snp_data, min_snp_count):
             for base in snp_data[chrom][pos]:
                 if snp_data[chrom][pos][base]['is_canonical']:
                     clade_id = snp_data[chrom][pos][base]['clade_id']
+
                     if not clade_id in nodes:
                         nodes[clade_id] = {
                             'chr': [],
@@ -287,6 +290,7 @@ def get_valid_nodes(snp_data, min_snp_count):
                       'fisher': {},
                       'ari': {},
                       'ami': {}}}
+
     for clade_id in nodes:
         if len(nodes[clade_id]['pos']) >= min_snp_count:
             filtered[clade_id] = nodes[clade_id]
@@ -579,6 +583,7 @@ def select_nodes(clade_data, dist_ranges, min_count=1):
         candidate_nodes.append([])
     candidate_nodes[-1].append('0')
     for clade_id in clade_data:
+
         if len(clade_data[clade_id]['chr']) < min_count:
             continue
         ave_dist = clade_data[clade_id]['ave_dist']
@@ -636,12 +641,15 @@ def create_compressed_hierarchy(ete_tree_obj, selected_nodes):
         if len(nodes) > 0:
             filt_nodes.append(nodes)
 
+
     for sample_id in sample_genotypes:
+
         genotype = sample_genotypes[sample_id]
         filt = []
         for node_id in genotype:
             if node_id in valid_nodes:
                 filt.append(node_id)
+
         for idx, nodes in enumerate(filt_nodes):
             ovl = set(nodes) & set(filt)
             if len(ovl) > 1:
@@ -781,9 +789,12 @@ def select_kmers(kmer_groups, clade_info, klen, min_kmers=1, max_kmers=100):
     positions = clade_info['0']['pos']
     for i in range(0,len(conserved_ranges)):
         pos = conserved_ranges[i][0]
+        if len(kmer_groups[pos]['kmers']) > 1:
+            continue
         positions.append(pos)
         clade_info['0']['chr'].append('1')
         kIndex = list(kmer_groups[pos]['kmers'].keys())[0]
+
         kseq = kmer_groups[pos]['kmers'][kIndex]
         base = kseq[0]
         clade_info['0']['bases'].append(base)
@@ -865,11 +876,7 @@ def minimize_kmers(selected_kmers, kmer_groups, clade_info, klen, min_kmers=1, m
     for pos in positions:
         num_in_group = len(selected_kmers[pos]['in_group'])
         num_out_group = len(selected_kmers[pos]['out_group'])
-        if num_in_group >= 1 and num_out_group == 0:
-            base = list(selected_kmers[pos]['in_group'])[0]
-            #clade_info['0']['chr'].append('')
-            #clade_info['0']['pos'].append(pos)
-            #clade_info['0']['bases'].append(base)
+
         for base in selected_kmers[pos]['out_group']:
             for kIndex in selected_kmers[pos]['out_group'][base]:
                 if not kIndex in kmer_pos:
@@ -912,6 +919,10 @@ def minimize_kmers(selected_kmers, kmer_groups, clade_info, klen, min_kmers=1, m
         for group in selected_kmers[pos]:
             for base in selected_kmers[pos][group]:
                 selected_kmers[pos][group][base] = sorted(list(set(selected_kmers[pos][group][base]) & reduced_kset))
+
+
+
+
     return selected_kmers
 
 
@@ -947,11 +958,14 @@ def kmer_worker(outdir, ref_seq, vcf_file, kLen, min_kmer_count, max_kmer_count,
 
     logging.info("Initial kmer filtering")
     kmer_counf_df = parse_jellyfish_counts(jellyfish_file)
+    logging.info("Read {} kmers".format(len(kmer_counf_df)))
     kmer_counf_df = kmer_counf_df[kmer_counf_df['count'] >= min_kmer_count]
     kmer_counf_df = kmer_counf_df[kmer_counf_df['count'] <= max_kmer_count]
     kmer_counf_df.reset_index(inplace=True)
+    logging.info(" {} kmers remain after count filter >= {}, <= {}".format(len(kmer_counf_df),min_kmer_count,max_kmer_count))
     seqKmers = kmer_counf_df['kmer'].to_dict()
     out_kmer_file = os.path.join(outdir, "{}-filt.kmers.txt".format(prefix))
+    logging.info("Collecting k-mer position information")
     return SeqSearchController(seqKmers, pseudo_seq_file, out_kmer_file, n_threads)
 
 
@@ -975,6 +989,7 @@ def clade_worker(ete_tree_obj, tree_file, vcf_file, metadata_file, min_snp_count
     write_snp_report(snps, os.path.join(outdir, "{}-snps.all.txt".format(prefix)))
     snps = snp_based_filter(snps, min_member_count, max_states)
     clade_data = get_valid_nodes(snps, min_snp_count)
+
 
     pruned_tree, valid_nodes = prune_tree(ete_tree_obj, list(clade_data.keys()))
 
@@ -1021,13 +1036,21 @@ def clade_worker(ete_tree_obj, tree_file, vcf_file, metadata_file, min_snp_count
          dist_summary['summary']['dist']['75%'] + dist_summary['summary']['dist']['max']),
     ]
 
+    genotypes = generate_genotypes(pruned_tree)
+    terminal_nodes = {}
+    for sample_id in genotypes:
+        node_id = genotypes[sample_id][-1]
+        if not node_id in terminal_nodes:
+            terminal_nodes[node_id] = 0
+        terminal_nodes[node_id] += 1
+
+
     candidate_nodes = select_nodes(clade_data, nomenclature_dist_ranges)
     bifurcating_nodes =  set(select_bifucating_nodes(pruned_tree, clade_data))
     valid_nodes = sorted(list(create_compressed_hierarchy(ete_tree_obj, candidate_nodes) | bifurcating_nodes))
 
     pruned_tree, valid_nodes = prune_tree(ete_tree_obj, valid_nodes)
     genotypes = generate_genotypes(pruned_tree)
-    terminal_nodes = {}
     for sample_id in genotypes:
         node_id = genotypes[sample_id][-1]
         if not node_id in terminal_nodes:
@@ -1037,7 +1060,7 @@ def clade_worker(ete_tree_obj, tree_file, vcf_file, metadata_file, min_snp_count
     for node_id in terminal_nodes:
         if terminal_nodes[node_id] >= min_member_count:
             valid_nodes.add(node_id)
-        valid_nodes.add(node_id)
+
     pruned_tree, valid_nodes = prune_tree(ete_tree_obj, valid_nodes)
     genotypes = generate_genotypes(pruned_tree)
     write_genotypes(genotypes, os.path.join(outdir, "{}-genotypes.selected.txt".format(prefix)), delimeter='.')
@@ -1130,7 +1153,7 @@ def find_overlaping_gene_feature(start,end,ref_info,ref_name):
                 return feat
     return None
 
-def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_features={},trans_table=11):
+def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, kmer_rule_obj,ref_features={},trans_table=11):
     '''
     Parameters
     ----------
@@ -1188,8 +1211,12 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
             if b == ref_base:
                 continue
             alt_bases.append(b)
+
         if len(alt_bases) == 0:
             alt_bases = [ref_base]
+            #Skip positions where there are multiple kmers to represent a conserved kmer
+            if len(selected_kmers[pos][ref_base]) > 1:
+                continue
         for i in range(0, len(alt_bases)):
             alt_base = alt_bases[i]
             mutation_key = "snp_{}_{}_{}".format(ref_base, pos + 1, alt_base)
@@ -1259,7 +1286,7 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
                     obj['ref_state'] = ref_base
                     obj['alt_state'] = alt_base
                     state = 'ref'
-                    if base == alt_base:
+                    if base == alt_base and base != ref_base:
                         state = 'alt'
                     obj['state'] = state
                     obj['kseq'] = selected_kmers[pos][base][kIndex]['kseq']
@@ -1271,7 +1298,8 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
                     obj['is_kmer_unique'] = True
                     obj['is_valid'] = True
                     obj['kmer_entropy'] = -1
-
+                    obj['positive_genotypes'] = ",".join(kmer_rule_obj[obj['kseq']]['positive_genotypes'])
+                    obj['partial_genotypes'] = ",".join(kmer_rule_obj[obj['kseq']]['partial_genotypes'])
                     obj['gene'] = gene_name
                     if gene_feature is not None:
                         obj['gene_start'] = gene_start+1
@@ -1287,9 +1315,6 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
                     obj['is_frame_shift'] = False
                     obj['is_silent'] = is_silent
 
-
-
-
                     is_found = False
                     for clade_id in clade_info:
                         if not clade_info[clade_id]['is_selected']:
@@ -1301,7 +1326,6 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
                             if b != base:
                                 continue
                             if clade_id in node_members:
-                                obj['positive_genotypes'] = ",".join(node_members[clade_id])
                                 counts = [0] * num_genotypes
                                 for k in range(0, len(node_members[clade_id])):
                                     counts[k] += 1
@@ -1322,6 +1346,59 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, ref_
 
     return scheme
 
+def construct_ruleset(selected_kmers, genotype_map,outdir,prefix,min_perc):
+    kmer_rules = {}
+    for pos in selected_kmers:
+        for base in selected_kmers[pos]:
+            for kIndex in selected_kmers[pos][base]:
+                kseq = selected_kmers[pos][base][kIndex]['kseq']
+                kmer_rules[kseq] = {}
+
+    genotype_counts = {}
+    for sample_id in genotype_map:
+        genotype = genotype_map[sample_id].split('.')
+        query = []
+        for g in genotype:
+            query.append(g)
+            q = ".".join(query)
+            if not q in genotype_counts:
+                genotype_counts[q] = 0
+            genotype_counts[q]+=1
+
+
+    kmer_file = os.path.join(outdir, "{}-filt.kmers.txt".format(prefix))
+    fh = open(kmer_file,'r')
+    header = next(fh).split("\t")
+    for line in fh:
+        line = line.split("\t")
+        if len(line) != 5:
+            continue
+        kseq= line[3]
+        samples = line[4].split(',')
+        genotypes = {}
+        for sample_id in samples:
+            sample_id = sample_id.split("~")[0]
+            genotype = genotype_map[sample_id].split('.')
+            query = []
+            for g in genotype:
+                query.append(g)
+                q = ".".join(query)
+                if not q in genotypes:
+                    genotypes[q] = 0
+                genotypes[q] += 1
+
+        kmer_rules[kseq] = {'positive_genotypes':[],'partial_genotypes':[]}
+        for genotype in genotypes:
+            perc = genotypes[genotype] / genotype_counts[genotype]
+            if perc >= min_perc:
+                kmer_rules[kseq]['positive_genotypes'].append(genotype)
+            else:
+                kmer_rules[kseq]['partial_genotypes'].append(genotype)
+
+    return kmer_rules
+
+
+
 
 def run():
     cmd_args = parse_args()
@@ -1337,6 +1414,7 @@ def run():
     rcor_thresh = cmd_args.rcor_thresh
     min_snp_count = cmd_args.min_snp_count
     min_member_count = cmd_args.min_members
+    min_perc = cmd_args.min_perc
     max_states = cmd_args.max_states
     num_threads = cmd_args.num_threads
     keep_tmp = cmd_args.keep_tmp
@@ -1483,10 +1561,18 @@ def run():
         filt[clade_id] = clade_data[clade_id]
     clade_data = filt
 
+    genotype_assignments = pd.read_csv(os.path.join(outdir, "{}-genotypes.selected.txt".format(prefix)),sep="\t",header=0).astype(str)
+    genotype_assignments = dict(zip(genotype_assignments['sample_id'], genotype_assignments['genotype']))
+
+    kmer_rule_obj = construct_ruleset(selected_kmers, genotype_assignments,outdir,prefix,min_perc)
+
+
     if len(ref_features) > 0:
-        scheme = create_scheme_obj(SCHEME_HEADER, selected_kmers, clade_data, genotypes, ref_features)
+        scheme = create_scheme_obj(SCHEME_HEADER, selected_kmers, clade_data, genotypes, kmer_rule_obj,ref_features,)
     else:
-        scheme = create_scheme_obj(SCHEME_HEADER, selected_kmers, clade_data, genotypes, ref_seq)
+        scheme = create_scheme_obj(SCHEME_HEADER, selected_kmers, clade_data, genotypes, kmer_rule_obj,ref_seq)
+
+
 
     fh = open(os.path.join(outdir, "{}-scheme.txt".format(prefix)), 'w')
     fh.write("{}\n".format("\t".join(SCHEME_HEADER)))
