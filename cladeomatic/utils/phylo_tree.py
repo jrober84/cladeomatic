@@ -381,7 +381,7 @@ def plot_single_rep_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=
                 field_lens[i] = 0
             if l > field_lens[i]:
                 field_lens[i] = l
-    h = num_samples * 100
+    h = num_samples * 10
     w = int(h / 2)
 
     #Set color pallet

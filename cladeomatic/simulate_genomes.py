@@ -33,16 +33,35 @@ def is_success(probability):
     else:
         return False
 
+def get_available_positions(sites):
+    pos = []
+    for idx, bases in enumerate(sites):
+        if sum(bases.values()) > 1:
+            continue
+        pos.append(idx)
+    return pos
+
 
 def simulate(seq,num_mutations,num_generations,num_children=2):
     seq_len = len(seq)
     seq_stack = [data_struct()]
     base_range = range(0,seq_len)
     bases = ['A','T','C','G']
+    sites = []
+    for i in base_range:
+        sites.append( {} )
+        for b in bases:
+            sites[i][b] = 0
+        sites[i][seq[i]] = 1
+
+    available_sites = get_available_positions(sites)
     children = range(0,num_children)
     sample_id = 1
     events = range(0,num_mutations)
     for i in range(0,num_generations):
+        if len(available_sites) == 0:
+            print("Sequence has no more sites to mutate")
+            break
         print("generation:{}, num seqs:{}".format(i,sample_id))
         for k in range(0,len(seq_stack)):
             parent_seq = seq_stack[k]
@@ -53,15 +72,14 @@ def simulate(seq,num_mutations,num_generations,num_children=2):
             for j in children:
                 mutations = deepcopy(parent_seq['mutations'])
                 for l in events:
-                    pos = random.randrange(0,seq_len)
-                    #prevent mutation of the same site
-                    while pos in mutations:
-                        pos = random.randrange(0, seq_len)
-                    b = seq[pos]
-                    mb = random.choice(bases)
-                    while b == mb:
-                        mb = random.choice(bases)
-                    mutations[pos] = mb
+                    pos = random.choice(available_sites)
+                    muts = sites[pos]
+                    for b in bases:
+                        if muts[b] == 0:
+                            break
+                sites[pos][b] = 1
+                available_sites = list(set(available_sites) - set([pos]))
+                mutations[pos] = b
                 child = data_struct()
                 child['path'] = "{}.{}".format(parent_seq['path'],k)
                 child['generation'] = i
@@ -70,6 +88,7 @@ def simulate(seq,num_mutations,num_generations,num_children=2):
                 child['mutations'] = mutations
                 seq_stack.append(child)
                 sample_id+=1
+        available_sites = get_available_positions(sites)
     return seq_stack
 
 
@@ -90,8 +109,8 @@ def create_seqs(sim_samples,id,seq,outfile):
 
 
 def main():
-    input_fasta = '/Users/jrobertson/Desktop/2022-09-Simulation/aroC.fas'
-    output_fasta = '/Users/jrobertson/Desktop/2022-09-Simulation/aroC.simulation.fas'
+    input_fasta = '/Users/jrobertson/Desktop/2022-09-Simulation/thrA.fas'
+    output_fasta = '/Users/jrobertson/Desktop/2022-09-Simulation/thrA.simulation.fas'
     num_generations = 10
 
     num_mutations = 1

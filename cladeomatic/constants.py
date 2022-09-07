@@ -300,7 +300,7 @@ SCHEME_HEADER = [
     'mutation_key',
     'mutation_type',
     'dna_name',
-    'gene',
+    'gene_name',
     'gene_start',
     'gene_end',
     'cds_start',

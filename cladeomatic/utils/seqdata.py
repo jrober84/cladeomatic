@@ -165,6 +165,9 @@ def get_variants(vcf_file):
 
         for sample_id in samples:
             base = data[sample_id]
+
+            if base == '*':
+                base = '-'
             if base not in valid_bases:
                 base = 'N'
             is_ref = base == ref
@@ -175,7 +178,6 @@ def get_variants(vcf_file):
 
             sample_variants[sample_id][chrom][pos] = base
         data = vcf.process_row()
-
     return sample_variants
 
 

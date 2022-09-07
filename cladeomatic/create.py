@@ -28,6 +28,7 @@ from cladeomatic.utils.seqdata import create_pseudoseqs_from_vcf, parse_referenc
     create_aln_pos_from_unalign_pos_lookup, calc_homopolymers
 from cladeomatic.utils.vcfhelper import vcfReader
 from cladeomatic.utils.visualization import plot_bar
+from cladeomatic.utils.seqdata import get_variants
 from cladeomatic.version import __version__
 
 
@@ -1300,7 +1301,7 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, kmer
                     obj['kmer_entropy'] = -1
                     obj['positive_genotypes'] = ",".join(kmer_rule_obj[obj['kseq']]['positive_genotypes'])
                     obj['partial_genotypes'] = ",".join(kmer_rule_obj[obj['kseq']]['partial_genotypes'])
-                    obj['gene'] = gene_name
+                    obj['gene_name'] = gene_name
                     if gene_feature is not None:
                         obj['gene_start'] = gene_start+1
                         obj['gene_end'] = gene_end+1
@@ -1346,7 +1347,7 @@ def create_scheme_obj(header, selected_kmers, clade_info, sample_genotypes, kmer
 
     return scheme
 
-def construct_ruleset(selected_kmers, genotype_map,outdir,prefix,min_perc):
+def construct_ruleset_bck(selected_kmers, genotype_map,outdir,prefix,min_perc):
     kmer_rules = {}
     for pos in selected_kmers:
         for base in selected_kmers[pos]:
@@ -1397,7 +1398,84 @@ def construct_ruleset(selected_kmers, genotype_map,outdir,prefix,min_perc):
 
     return kmer_rules
 
+def construct_ruleset(selected_kmers, genotype_map,outdir,prefix,min_perc):
+    kmer_rules = {}
+    for pos in selected_kmers:
+        for base in selected_kmers[pos]:
+            for kIndex in selected_kmers[pos][base]:
+                kseq = selected_kmers[pos][base][kIndex]['kseq']
+                kmer_rules[kseq] = {}
 
+    genotype_counts = {}
+    for sample_id in genotype_map:
+        genotype = genotype_map[sample_id]
+        if not genotype in genotype_counts:
+            genotype_counts[genotype] = 0
+        genotype_counts[genotype] += 1
+
+
+    kmer_file = os.path.join(outdir, "{}-filt.kmers.txt".format(prefix))
+    fh = open(kmer_file,'r')
+    header = next(fh).split("\t")
+    for line in fh:
+        line = line.split("\t")
+        if len(line) != 5:
+            continue
+        kseq= line[3]
+        samples = line[4].split(',')
+        genotypes = {}
+        for sample_id in samples:
+            sample_id = sample_id.split("~")[0]
+            genotype = genotype_map[sample_id]
+            if not genotype in genotypes:
+                genotypes[genotype] = 0
+
+            genotypes[genotype] += 1
+
+        kmer_rules[kseq] = {'positive_genotypes':[],'partial_genotypes':[]}
+        for genotype in genotypes:
+            perc = genotypes[genotype] / genotype_counts[genotype]
+            if perc >= min_perc:
+                kmer_rules[kseq]['positive_genotypes'].append(genotype)
+            else:
+                kmer_rules[kseq]['partial_genotypes'].append(genotype)
+
+    return kmer_rules
+
+def call_consensus_snp_genotypes(ref_seq,vcf_file, genotype_map,outfile,min_perc=1):
+    variants = get_variants(vcf_file)
+    genotype_counts = {}
+    genotype_members = {}
+    for sample_id in variants:
+        genotype = genotype_map[sample_id]
+        if not genotype in genotype_counts:
+            genotype_counts[genotype] = {}
+            genotype_members[genotype] = 0
+        genotype_members[genotype]+=1
+        for chrom in variants[sample_id]:
+            for pos in variants[sample_id][chrom]:
+                base =  variants[sample_id][chrom][pos]
+                if not pos in genotype_counts[genotype]:
+                    genotype_counts[genotype][pos] = {'A':0,'T':0,'C':0,'G':0,'N':0}
+                if not base in genotype_counts[genotype][pos]:
+                    base = 'N'
+                genotype_counts[genotype][pos][base]+=1
+    fh = open(outfile,'w')
+    chrom = list(ref_seq.keys())[0]
+
+    for genotype in genotype_counts:
+        seq = list(ref_seq[chrom])
+        for pos in genotype_counts[genotype]:
+            total = genotype_members[genotype]
+            b = max(genotype_counts[genotype][pos], key=genotype_counts[genotype][pos].get)
+            value = genotype_counts[genotype][pos][b]
+            if value / total >= min_perc:
+                seq[pos-1] = b
+            else:
+                seq[pos-1] = 'N'
+        fh.write(">{}\n{}\n".format(genotype,"".join(seq)))
+
+    return
 
 
 def run():
@@ -1530,8 +1608,11 @@ def run():
         for field in metadata[sample_id]:
             leaf_meta[sample_id].append(metadata[sample_id][field])
 
+    logging.info("Creating full tree figure")
     tree_fig = annotate_tree(os.path.join(outdir, "{}-fulltree.pdf".format(prefix)), ete_tree_obj, valid_nodes, leaf_meta=leaf_meta,h=6400,w=6400,dpi=10000)
+    logging.info("Creating representative tree figure")
     plot_single_rep_tree(os.path.join(outdir, "{}-reducedtree.png".format(prefix)), ete_tree_obj, valid_nodes, leaf_meta=leaf_meta,h=6400,w=6400,dpi=10000)
+    logging.info("Identifying genotyping kmers")
     kmer_groups = kmer_worker(outdir, ref_seq, variant_file, klen, min_member_count, num_samples, prefix, num_threads)
 
     selected_kmers = select_kmers(kmer_groups, clade_data, klen)
@@ -1560,19 +1641,19 @@ def run():
 
         filt[clade_id] = clade_data[clade_id]
     clade_data = filt
-
+    logging.info("Writting sample genotypes to file")
     genotype_assignments = pd.read_csv(os.path.join(outdir, "{}-genotypes.selected.txt".format(prefix)),sep="\t",header=0).astype(str)
     genotype_assignments = dict(zip(genotype_assignments['sample_id'], genotype_assignments['genotype']))
-
+    logging.info("Constructing kmer rule set")
     kmer_rule_obj = construct_ruleset(selected_kmers, genotype_assignments,outdir,prefix,min_perc)
 
-
+    logging.info("Creating scheme")
     if len(ref_features) > 0:
         scheme = create_scheme_obj(SCHEME_HEADER, selected_kmers, clade_data, genotypes, kmer_rule_obj,ref_features,)
     else:
         scheme = create_scheme_obj(SCHEME_HEADER, selected_kmers, clade_data, genotypes, kmer_rule_obj,ref_seq)
 
-
+    call_consensus_snp_genotypes(ref_seq, variant_file, genotype_assignments, os.path.join(outdir,"{}-genotype.consenus.fasta".format(prefix)), min_perc)
 
     fh = open(os.path.join(outdir, "{}-scheme.txt".format(prefix)), 'w')
     fh.write("{}\n".format("\t".join(SCHEME_HEADER)))

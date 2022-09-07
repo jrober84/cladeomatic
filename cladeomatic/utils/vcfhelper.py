@@ -61,8 +61,11 @@ class vcfReader:
             if isinstance(base,str):
                 if base.isnumeric():
                     base = bases[int(base)]
-                elif base not in ['A', 'T', 'C', 'G']:
-                    base = 'N'
+                elif base not in ['A', 'T', 'C', 'G','-']:
+                    if base == '*':
+                        base = '-'
+                    else:
+                        base = 'N'
             else:
                 base = bases[int(base)]
             data[sample_id] = base

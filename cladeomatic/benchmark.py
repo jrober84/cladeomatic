@@ -85,6 +85,7 @@ def parse_scheme_genotypes(scheme_file):
             scheme[genotype]['positive'][variant_start] = target_variant
 
         partial_genotypes = row.partial_genotypes
+
         if isinstance(partial_genotypes,float):
             partial_genotypes = []
         else:
@@ -106,12 +107,14 @@ def parse_scheme_genotypes(scheme_file):
                 geno_seqs[genotype][variant_start] = target_variant
             else:
                 if geno_seqs[genotype][variant_start] != target_variant:
-                    geno_seqs[genotype][variant_start] = "-"
+                    geno_seqs[genotype][variant_start] = "N"
+    fh = open('/Users/jrobertson/Desktop/2022-09-Simulation/thrA-cladeomatic/benchmark/benchmark.genotype.snps.txt','w')
     for genotype in geno_seqs:
-        print(">{}\n{}\n".format(genotype,"".join(list(geno_seqs[genotype].values()))))
+        fh.write(">{}\n{}\n".format(genotype,"".join(list(geno_seqs[genotype].values()))))
+    fh.close()
 
 
-    sys.exit()
+   #sys.exit()
 
     return scheme
 
