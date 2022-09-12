@@ -1,3 +1,4 @@
+import copy
 import tempfile
 import shutil
 import logging
@@ -1517,6 +1518,9 @@ def run():
             logging.error("Error file {} either does not exist or is empty".format(file))
             sys.exit()
 
+    if root_method is None and root_name is not None:
+        root_method = 'outgroup'
+
     # validate samples present in all files match
     ete_tree_obj = parse_tree(tree_file, logging, ete_format=1, set_root=True, resolve_polytomy=True, ladderize=True,
                               method='midpoint')
@@ -1573,6 +1577,7 @@ def run():
                                                                                                   len(sample_set)))
         sys.exit()
 
+
     ref_seq = {}
     ref_features = {}
     if seq_file_type == 'genbank':
@@ -1596,6 +1601,9 @@ def run():
         logging.info("Creating temporary analysis directory {}".format(analysis_dir))
         os.mkdir(analysis_dir, 0o755)
 
+    genotypes = generate_genotypes(ete_tree_obj)
+    write_genotypes(genotypes, os.path.join(outdir, "{}-genotypes.raw.txt".format(prefix)), delimeter='.')
+
     clade_data = clade_worker(ete_tree_obj, tree_file, variant_file, metadata_file, min_snp_count, outdir,prefix , max_states,
                               min_member_count, rcor_thresh)
 
@@ -1615,9 +1623,10 @@ def run():
             leaf_meta[sample_id].append(metadata[sample_id][field])
 
     logging.info("Creating full tree figure")
+    m_ete_tree_obj = copy.deepcopy(ete_tree_obj)
     tree_fig = annotate_tree(os.path.join(outdir, "{}-fulltree.pdf".format(prefix)), ete_tree_obj, valid_nodes, leaf_meta=leaf_meta,h=6400,w=6400,dpi=10000)
     logging.info("Creating representative tree figure")
-    plot_single_rep_tree(os.path.join(outdir, "{}-reducedtree.png".format(prefix)), ete_tree_obj, valid_nodes, leaf_meta=leaf_meta,h=6400,w=6400,dpi=10000)
+    plot_single_rep_tree(os.path.join(outdir, "{}-reducedtree.pdf".format(prefix)),  m_ete_tree_obj, valid_nodes, leaf_meta=leaf_meta,h=6400,w=6400,dpi=10000)
     logging.info("Identifying genotyping kmers")
     kmer_groups = kmer_worker(outdir, ref_seq, variant_file, klen, min_member_count, num_samples, prefix, num_threads)
 
@@ -1647,7 +1656,8 @@ def run():
 
         filt[clade_id] = clade_data[clade_id]
     clade_data = filt
-    logging.info("Writting sample genotypes to file")
+    logging.info("Readinf genotype assigments")
+    logging.info("Readinf genotype assigments")
     genotype_assignments = pd.read_csv(os.path.join(outdir, "{}-genotypes.selected.txt".format(prefix)),sep="\t",header=0).astype(str)
     genotype_assignments = dict(zip(genotype_assignments['sample_id'], genotype_assignments['genotype']))
     logging.info("Constructing kmer rule set")

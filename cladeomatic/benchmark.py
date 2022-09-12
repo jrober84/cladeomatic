@@ -108,14 +108,6 @@ def parse_scheme_genotypes(scheme_file):
             else:
                 if geno_seqs[genotype][variant_start] != target_variant:
                     geno_seqs[genotype][variant_start] = "N"
-    fh = open('/Users/jrobertson/Desktop/2022-09-Simulation/thrA-cladeomatic/benchmark/benchmark.genotype.snps.txt','w')
-    for genotype in geno_seqs:
-        fh.write(">{}\n{}\n".format(genotype,"".join(list(geno_seqs[genotype].values()))))
-    fh.close()
-
-
-   #sys.exit()
-
     return scheme
 
 def call_genotypes(genotype_rules,metadata,variants,max_dist=0,n_threads=1):

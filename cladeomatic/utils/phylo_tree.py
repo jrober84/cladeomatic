@@ -248,6 +248,12 @@ def get_tree_node_bootstrap(ete_tree_obj):
     return support
 
 def annotate_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,circular=True,font_size=18,show_branch_support=False,h=1600,w=900,dpi=1000):
+
+    #fix issue with rooting causing rendering of circular trees to fail
+    root_node = ete_tree_obj.get_tree_root()
+    if root_node.dist == 0:
+        root_node.dist = 0.00000000000000001
+
     node_ids = sorted(list(node_ids))
     #Autoscale content
     num_samples = len(ete_tree_obj.get_leaves())
@@ -287,6 +293,7 @@ def annotate_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,ci
     ts = TreeStyle()
     ts.show_leaf_name = False
     ts.show_branch_support = show_branch_support
+    ts.draw_aligned_faces_as_table = True
     if circular:
         ts.mode='c'
 
@@ -362,29 +369,15 @@ def annotate_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,ci
             index+=1
 
 
-    ete_tree_obj.render(outfile,tree_style=ts,h=h,w=w,units='px',dpi=dpi)
+    ete_tree_obj.render(outfile,tree_style=ts,dpi=dpi)
 
-def plot_single_rep_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,circular=False,font_size=1,show_branch_support=False,h=1600,w=900,dpi=1000):
-    node_ids = sorted(list(node_ids))
-    #Autoscale content
-    num_samples = len(ete_tree_obj.get_leaves())
-    num_fields = 0
-    field_lens = {}
-    for id in leaf_meta:
-        n = len(leaf_meta[id])
-        if n > num_fields:
-            num_fields = n
-        fields = leaf_meta[id]
-        for i in range(0,len(fields)):
-            l = len(fields[i])
-            if not i in field_lens:
-                field_lens[i] = 0
-            if l > field_lens[i]:
-                field_lens[i] = l
-    h = num_samples * 10
-    w = int(h / 2)
+def plot_single_rep_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,circular=False,font_size=18,show_branch_support=False,h=1600,w=900,dpi=1000):
+    #fix issue with rooting causing rendering of circular trees to fail
+    root_node = ete_tree_obj.get_tree_root()
+    if root_node.dist == 0:
+        root_node.dist = 0.00000000000000001
 
-    #Set color pallet
+    # Set color pallet
     color_list = []
     max_secondary = 0
     for primary_color in COLORS:
@@ -411,6 +404,77 @@ def plot_single_rep_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=
     if circular:
         ts.mode='c'
 
+    # Init node backgrounds
+    num_colors = len(color_list)
+    node_colors = {}
+    num_ranks = 0
+    k = 0
+    p = 0
+    for sample_id in leaf_meta:
+        genotype = leaf_meta[sample_id][0].split('.')
+        l = len(genotype)
+        if l > num_ranks:
+            num_ranks = l
+        for node in genotype:
+            if node in node_colors:
+                continue
+            if k >= num_colors:
+                k = 0
+                p += 1
+            node_colors[node] = color_list[k]
+            k += 1
+
+    # Applies the same static style to all nodes in the tree. Note that,
+    # if "nstyle" is modified, changes will affect to all nodes
+    for n in ete_tree_obj.traverse():
+        name = n.name
+        nstyle = NodeStyle()
+        nstyle["vt_line_color"] = "black"
+        nstyle["hz_line_color"] = "black"
+        nstyle["vt_line_type"] = 0
+        nstyle["vt_line_width"] = 1
+        nstyle["hz_line_width"] = 1
+        nstyle["size"] = 0
+        nstyle["shape"] = "square"
+        # if name in node_ids:
+        #    nstyle["bgcolor"] = node_colors[name]
+
+        n.set_style(nstyle)
+
+    for n in ete_tree_obj.get_leaves():
+        name = n.name
+
+        index = 1
+        genotype = leaf_meta[name][0].split('.')
+        glen = len(genotype) - 1
+        label = leaf_meta[name][0]
+        face = TextFace(ftype='Courier', text=label, fsize=font_size)
+        face.hz_align = 0
+        face.background.color = 'white'
+        face.margin_right = 0
+        face.margin_left = 1
+        face.border.width = 1
+        face.border.color = 'white'
+        n.add_face(face, column=0, position="aligned")
+
+        for i in range(0, num_ranks + 1):
+
+            if i > glen:
+                face = RectFace(width=50, height=50, bgcolor='white', fgcolor='white')
+                face.border.color = 'white'
+            else:
+                face = RectFace(width=50, height=50, bgcolor=node_colors[genotype[i]],
+                                fgcolor=node_colors[genotype[i]])
+                face.border.color = node_colors[genotype[i]]
+            face.margin_right = 0
+            face.margin_left = 0
+            face.border.width = 1
+
+            face.inner_border.width = 0
+            n.add_face(face, column=index, position="aligned")
+            index += 1
+
+
     genotype_samples = {}
     leaves = set()
     for sample_id in leaf_meta:
@@ -421,115 +485,4 @@ def plot_single_rep_tree(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=
 
     valid_leaves = list(genotype_samples.values())
     ete_tree_obj.prune(valid_leaves)
-
-
-
-
-    ete_tree_obj.render(outfile,tree_style=ts,h=h,w=w,units='px',dpi=dpi)
-
-def annotate_bck(outfile,ete_tree_obj,node_ids,leaf_meta={},node_colors=None,circular=False,font_size=8,show_branch_support=False,h=1600,w=800,dpi=600):
-
-
-    node_ids = sorted(list(node_ids))
-    # Basic tree style
-    ts = TreeStyle()
-    ts.show_leaf_name = False
-    ts.show_branch_support = show_branch_support
-    if circular:
-        ts.mode='c'
-
-    color_list = []
-    max_secondary = 0
-    for primary_color in COLORS:
-        num = len(COLORS[primary_color])
-        if num > max_secondary:
-            max_secondary = num
-    for i in range(0,max_secondary):
-        for primary_color in COLORS:
-            num = len(COLORS[primary_color])
-            if i < num:
-                secondary_color = list(COLORS[primary_color].keys())[i]
-                color_list.append(COLORS[primary_color][secondary_color])
-
-
-    #Init node backgrounds
-    num_colors = len(color_list)
-    node_colors = {}
-    num_ranks = 0
-    k = 0
-    p = 0
-    genotype_samples = {}
-    leaves = set()
-    for sample_id in leaf_meta:
-        leaves.add(sample_id)
-        if leaf_meta[sample_id][0] in genotype_samples:
-            continue
-        genotype_samples[leaf_meta[sample_id][0]] = sample_id
-        genotype = leaf_meta[sample_id][0].split('.')
-        l = len(genotype)
-        if l > num_ranks:
-            num_ranks = l
-        for node in genotype:
-            if node in node_colors:
-                continue
-            if k > num_colors:
-                k=0
-                p+=1
-            node_colors[node] = color_list[k]
-            k += 1
-
-    valid_leaves = set(genotype_samples.values())
-    leaves_to_remove = leaves  - valid_leaves
-    ete_tree_obj.prune(list(leaves_to_remove))
-    # Applies the same static style to all nodes in the tree. Note that,
-    # if "nstyle" is modified, changes will affect to all nodes
-    for n in ete_tree_obj.traverse():
-        name = n.name
-        if name in node_ids:
-            nstyle = NodeStyle()
-            nstyle["shape"] = "circle"
-            nstyle["size"] = 10
-            nstyle["fgcolor"] = "darkred"
-            nstyle["bgcolor"] = node_colors[name]
-            n.set_style(nstyle)
-    for n in ete_tree_obj.get_leaves():
-        name = n.name
-        label = name
-        face = TextFace(ftype='Courier', text=label, fsize=font_size)
-        face.background.color = 'white'
-        face.margin_right = 5
-        face.margin_left = 5
-        face.border.width = 1
-        face.border.color = 'white'
-        n.add_face(face, column=0, position="aligned")
-        if name not in leaf_meta:
-            continue
-        index=1
-        for i in range(0,len(leaf_meta[name])):
-            label = leaf_meta[name][i]
-            face = TextFace(text=label, fsize=font_size)
-            face.background.color = 'white'
-            face.margin_right = 5
-            face.margin_left = 5
-            face.border.width = 3
-            face.border.color = 'white'
-            n.add_face(face, column=index , position="aligned")
-            index += 1
-
-        genotype = leaf_meta[name][0].split('.')
-        glen = len(genotype) - 1
-        for i in range(0, num_ranks+1):
-            face = TextFace(ftype='Arial', text='  ', fsize=font_size)
-            if i > glen:
-                face.background.color = 'white'
-            else:
-                face.background.color = node_colors[genotype[i]]
-            face.margin_right = 0
-            face.margin_left = 5
-            face.border.width = 3
-            face.border.color = 'white'
-            n.add_face(face, column=index , position="aligned")
-            index+=1
-
-
-    ete_tree_obj.render(outfile,tree_style=ts,h=h,w=w,units='px',dpi=dpi)
+    ete_tree_obj.render(outfile,tree_style=ts,dpi=dpi)
