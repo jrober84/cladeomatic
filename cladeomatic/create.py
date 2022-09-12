@@ -1528,6 +1528,12 @@ def run():
         logging.error("Error specified root {} is not in tree: {}".format(root_name, tree_samples))
         sys.exit()
 
+    if root_method == 'outgroup':
+        ete_tree_obj = parse_tree(tree_file, logging, ete_format=1, set_root=True, resolve_polytomy=True,
+                                  ladderize=True,
+                                  method='outgroup',outgroup=root_name)
+
+
     for sample_id in tree_samples:
         if isint(sample_id):
             logging.error("Error sample_ids cannot be integers offending sample '{}'".format(sample_id))
